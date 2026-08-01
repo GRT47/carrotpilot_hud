@@ -337,6 +337,9 @@ class OpenpilotLiveSource:
 
         controls_state = self._service_data("controlsState")
         lateral_state = safe_get(controls_state, "lateralControlState")
+        active_lane_line_raw = safe_get(controls_state, "activeLaneLine")
+        active_lane_line = bool(active_lane_line_raw) if active_lane_line_raw is not None else None
+        
         try:
             lateral_kind = str(lateral_state.which()) if lateral_state is not None else ""
         except Exception:
@@ -448,6 +451,7 @@ class OpenpilotLiveSource:
             custom_udp_data=custom_udp_data,
             light_sensor_percent=brightness_percent,
             ambient_light=float(brightness_percent) if brightness_percent is not None else state.ambient_light,
+            active_lane_line=active_lane_line,
         )
 
     def status_text(self) -> str:

@@ -92,8 +92,8 @@ SPEED_BG_PATH = SELFDRIVE_DIR / "assets" / "images" / "speed_bg.png"
 TRAFFIC_RED_ICON_PATH = SELFDRIVE_DIR / "assets" / "images" / "traffic_red.png"
 TRAFFIC_GREEN_ICON_PATH = SELFDRIVE_DIR / "assets" / "images" / "traffic_green.png"
 FOLLOW_VEHICLE_ICON_PATH = SELFDRIVE_DIR / "assets" / "icons_mici" / "carrot_cruse_gap_trimmed.png"
-LFA_ICON_PATH = SELFDRIVE_DIR / "assets" / "icons_mici" / "carrot_wheel_org.png"
-LFA_LANE_ICON_PATH = SELFDRIVE_DIR / "assets" / "icons_mici" / "carrot_wheel_lane.png"
+LFA_ICON_PATH = SELFDRIVE_DIR / "assets" / "icons_mici" / "wheel.png"
+LFA_LANE_ICON_PATH = SELFDRIVE_DIR / "assets" / "icons_mici" / "wheel_lane.png"
 WIFI_ICON_PATH = SELFDRIVE_DIR / "assets" / "icons_mici" / "settings" / "network" / "wifi_strength_full.png"
 ROUTE_CONTROL_PANEL_X = 340.0
 ROUTE_CONTROL_PANEL_Y = DESIGN_HEIGHT - 74.0
@@ -5946,17 +5946,27 @@ class ClusterUiRenderer:
         theme = self._current_theme()
         active = bool(state.lfa_active)
         
-        # Tesla Autopilot Blue
-        ap_blue = (44, 140, 250)
-        color = ap_blue if active else theme.muted
+        # Use original image colors when active, otherwise apply muted theme
+        color = (255, 255, 255) if active else theme.muted
         alpha = 255 if active else 190
         rotation_deg = -float(state.steering_angle_deg or 0.0)
         
         radius = LFA_STATUS_ICON_SIZE * 0.5
-        center_x = SIDE_GAUGE_LEFT_CENTER_X + SIDE_GAUGE_COLUMN_GAP
-        center_y = SIDE_GAUGE_VALUE_Y - 15.0 - radius
         
-        self._draw_tesla_steering_wheel(center_x, center_y, radius, rotation_deg, color, alpha)
+        # Move to top left (x=100) and align with top status bar
+        center_x = 100.0
+        center_y = bottom_y - radius
+        
+        self._draw_bottom_aligned_texture_icon(
+            self._lfa_texture,
+            center_x,
+            center_y + radius,
+            LFA_STATUS_ICON_SIZE,
+            LFA_STATUS_ICON_SIZE,
+            color,
+            alpha,
+            rotation_deg,
+        )
         
         if state.active_lane_line:
             self._draw_bottom_aligned_texture_icon(
@@ -5965,7 +5975,7 @@ class ClusterUiRenderer:
                 center_y + radius - LFA_LANE_ICON_TOP_OFFSET,
                 LFA_STATUS_ICON_SIZE * LFA_LANE_ICON_WIDTH_SCALE,
                 LFA_STATUS_ICON_SIZE,
-                ap_blue if active else theme.muted,
+                (255, 255, 255) if active else theme.muted,
                 alpha,
             )
 

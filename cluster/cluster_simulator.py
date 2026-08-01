@@ -85,6 +85,9 @@ class ClusterSimulator:
         # Toggle auto deceleration (AUTO badge) every 4 seconds
         color_mode = 2 if (self.elapsed % 8.0) < 4.0 else 1
 
+        # Toggle lane mode every 6 seconds
+        lane_mode = (self.elapsed % 12.0) < 6.0
+
         return ClusterUiState(
             onroad=True,
             speed_kph=self.speed_kph,
@@ -113,6 +116,7 @@ class ClusterSimulator:
             lane_change_progress=self.lane_change_progress,
             highlight_lane=highlight_lane,
             highlight_lane_offset=highlight_lane_offset,
+            active_lane_line=lane_mode,
             ego_lane_offset=self.ego_lane_position - self.view_lane_position,
             road_view_lane_position=self.view_lane_position,
             camera_lane_center_offset_m=self.camera_lane_center_offset_m,
