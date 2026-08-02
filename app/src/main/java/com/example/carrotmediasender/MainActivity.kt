@@ -22,6 +22,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import java.io.File
 import java.io.FileOutputStream
 import kotlinx.coroutines.launch
+import com.jcraft.jsch.JSch
+import com.jcraft.jsch.KeyPair
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.content.ClipboardManager
+import android.content.ClipData
+import android.widget.Toast
 
 class MainActivity : ComponentActivity() {
     override fun onResume() {
@@ -198,7 +205,54 @@ class MainActivity : ComponentActivity() {
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                     Button(onClick = { launcher.launch("*/*") }) {
-                                        Text(if (sshKeyExists) "변경하기" else "파일 선택")
+                                        Text(if (sshKeyExists) "파일 가져오기" else "파일 선택")
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Button(onClick = {
+                                        coroutineScope.launch(Dispatchers.IO) {
+                                            try {
+                                                val jsch = JSch()
+                                                val kpair = KeyPair.genKeyPair(jsch, KeyPair.ED25519)
+                                                val privFile = File(context.filesDir, "id_ed25519")
+                                                val pubFile = File(context.filesDir, "id_ed25519.pub")
+                                                kpair.writePrivateKey(privFile.absolutePath)
+                                                kpair.writePublicKey(pubFile.absolutePath, "carrothud@android")
+                                                kpair.dispose()
+                                                withContext(Dispatchers.Main) {
+                                                    sshKeyExists = true
+                                                    Toast.makeText(context, "새로운 SSH 키가 생성되었습니다.", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                                withContext(Dispatchers.Main) {
+                                                    Toast.makeText(context, "키 생성 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                    }) {
+                                        Text("키 자동 생성")
+                                    }
+                                    
+                                    if (sshKeyExists) {
+                                        Button(onClick = {
+                                            val pubFile = File(context.filesDir, "id_ed25519.pub")
+                                            if (pubFile.exists()) {
+                                                val pubKey = pubFile.readText()
+                                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                val clip = ClipData.newPlainText("SSH Public Key", pubKey)
+                                                clipboard.setPrimaryClip(clip)
+                                                Toast.makeText(context, "공개키가 복사되었습니다. 기기의 authorized_keys에 추가해주세요.", Toast.LENGTH_LONG).show()
+                                            } else {
+                                                Toast.makeText(context, "자동 생성된 공개키가 없습니다. 기존 파일을 사용 중입니다.", Toast.LENGTH_LONG).show()
+                                            }
+                                        }) {
+                                            Text("공개키 복사")
+                                        }
                                     }
                                 }
                             }
