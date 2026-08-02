@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
             var showConfirmDialog by remember { mutableStateOf(false) }
             var foundCommaIp by remember { mutableStateOf("") }
             var sshKeyExists by remember { mutableStateOf(File(context.filesDir, "id_ed25519").exists()) }
+            var manualIp by remember { mutableStateOf(sharedPrefs.getString("comma_ip", "") ?: "") }
 
             val launcher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.GetContent()
@@ -199,6 +200,32 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+                                Text(
+                                    text = "콤마 기기 IP (선택 사항)",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = manualIp,
+                                    onValueChange = { 
+                                        manualIp = it
+                                        sharedPrefs.edit().putString("comma_ip", it).apply()
+                                    },
+                                    placeholder = { Text("예: 192.168.1.30 (비워두면 자동 스캔)") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
+                                )
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(32.dp))
                         
                         Button(
@@ -215,16 +242,23 @@ class MainActivity : ComponentActivity() {
                         
                         Button(
                             onClick = {
-                                patchStatus = "콤마 기기 IP 스캔 중..."
-                                coroutineScope.launch {
-                                    val client = CommaSshClient(context)
-                                    val ip = client.findCommaDeviceIp()
-                                    if (ip != null) {
-                                        foundCommaIp = ip
-                                        showConfirmDialog = true
-                                        patchStatus = "IP 스캔 완료."
-                                    } else {
-                                        patchStatus = "패치 적용 실패: 네트워크에서 콤마 기기(포트 7000)를 찾을 수 없습니다."
+                                val targetIp = manualIp.trim()
+                                if (targetIp.isNotEmpty()) {
+                                    foundCommaIp = targetIp
+                                    showConfirmDialog = true
+                                    patchStatus = "IP 수동 입력됨."
+                                } else {
+                                    patchStatus = "콤마 기기 IP 스캔 중..."
+                                    coroutineScope.launch {
+                                        val client = CommaSshClient(context)
+                                        val ip = client.findCommaDeviceIp()
+                                        if (ip != null) {
+                                            foundCommaIp = ip
+                                            showConfirmDialog = true
+                                            patchStatus = "IP 스캔 완료."
+                                        } else {
+                                            patchStatus = "패치 적용 실패: 네트워크에서 콤마 기기(포트 7000)를 찾을 수 없습니다."
+                                        }
                                     }
                                 }
                             },
