@@ -17,11 +17,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
 
-class CommaSshClient(private val context: Context) {
+class CommaSshClient(private val context: Context, private val sshUser: String = "root", private val sshPort: Int = 22) {
     companion object {
         private const val TAG = "CommaSshClient"
-        private const val USER = "comma"
-        private const val PORT = 8022
     }
 
     suspend fun findCommaDeviceIp(): String? = withContext(Dispatchers.IO) {
@@ -99,7 +97,7 @@ class CommaSshClient(private val context: Context) {
 
             jsch.addIdentity(keyFile.absolutePath)
 
-            session = jsch.getSession(USER, targetHost, PORT)
+            session = jsch.getSession(sshUser, targetHost, sshPort)
             session.setConfig("StrictHostKeyChecking", "no")
             session.connect(10000)
 
