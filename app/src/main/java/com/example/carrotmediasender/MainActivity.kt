@@ -3,6 +3,7 @@ package com.example.carrotmediasender
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -31,6 +32,27 @@ import kotlinx.coroutines.withContext
 import android.content.ClipboardManager
 import android.content.ClipData
 import android.widget.Toast
+
+fun getFileNameFromUri(context: Context, uri: Uri): String? {
+    var result: String? = null
+    if (uri.scheme == "content") {
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index != -1) {
+                    result = cursor.getString(index)
+                }
+            }
+        }
+    }
+    if (result == null) {
+        result = uri.path?.let { path ->
+            val cut = path.lastIndexOf('/')
+            if (cut != -1) path.substring(cut + 1) else path
+        }
+    }
+    return result
+}
 
 class MainActivity : ComponentActivity() {
     override fun onResume() {
@@ -68,6 +90,7 @@ class MainActivity : ComponentActivity() {
             var patchLogs by remember { mutableStateOf("") }
             var foundCommaIp by remember { mutableStateOf("") }
             var sshKeyExists by remember { mutableStateOf(File(context.filesDir, "id_rsa").exists()) }
+            var sshKeyName by remember { mutableStateOf(sharedPrefs.getString("ssh_key_name", "") ?: "") }
             var manualIp by remember { mutableStateOf(sharedPrefs.getString("comma_ip", "") ?: "") }
             var isThemeSettingsExpanded by remember { mutableStateOf(false) }
 
@@ -76,12 +99,15 @@ class MainActivity : ComponentActivity() {
             ) { uri ->
                 uri?.let {
                     try {
+                        val fileName = getFileNameFromUri(context, it) ?: "알 수 없는 파일"
                         context.contentResolver.openInputStream(it)?.use { input ->
                             val outFile = File(context.filesDir, "id_rsa")
                             FileOutputStream(outFile).use { output ->
                                 input.copyTo(output)
                             }
                             sshKeyExists = true
+                            sshKeyName = fileName
+                            sharedPrefs.edit().putString("ssh_key_name", fileName).apply()
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -223,7 +249,9 @@ class MainActivity : ComponentActivity() {
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(
-                                        text = if (sshKeyExists) "✅ 키 파일이 등록됨" else "❌ 키 파일 없음",
+                                        text = if (sshKeyExists) {
+                                            if (sshKeyName.isNotEmpty()) "✅ 키 파일이 등록됨\n($sshKeyName)" else "✅ 키 파일이 등록됨"
+                                        } else "❌ 키 파일 없음",
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                     Button(onClick = { launcher.launch("*/*") }) {
@@ -247,6 +275,8 @@ class MainActivity : ComponentActivity() {
                                                 kpair.dispose()
                                                 withContext(Dispatchers.Main) {
                                                     sshKeyExists = true
+                                                    sshKeyName = "자동 생성된 키"
+                                                    sharedPrefs.edit().putString("ssh_key_name", sshKeyName).apply()
                                                     Toast.makeText(context, "새로운 SSH 키가 생성되었습니다.", Toast.LENGTH_SHORT).show()
                                                 }
                                             } catch (e: Exception) {
