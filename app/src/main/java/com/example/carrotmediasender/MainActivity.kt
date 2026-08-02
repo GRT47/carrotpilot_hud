@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
             var showProgressDialog by remember { mutableStateOf(false) }
             var patchLogs by remember { mutableStateOf("") }
             var foundCommaIp by remember { mutableStateOf("") }
-            var sshKeyExists by remember { mutableStateOf(File(context.filesDir, "id_ed25519").exists()) }
+            var sshKeyExists by remember { mutableStateOf(File(context.filesDir, "id_rsa").exists()) }
             var manualIp by remember { mutableStateOf(sharedPrefs.getString("comma_ip", "") ?: "") }
 
             val launcher = rememberLauncherForActivityResult(
@@ -75,7 +75,7 @@ class MainActivity : ComponentActivity() {
                 uri?.let {
                     try {
                         context.contentResolver.openInputStream(it)?.use { input ->
-                            val outFile = File(context.filesDir, "id_ed25519")
+                            val outFile = File(context.filesDir, "id_rsa")
                             FileOutputStream(outFile).use { output ->
                                 input.copyTo(output)
                             }
@@ -106,14 +106,14 @@ class MainActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(32.dp))
                         
                         Text(
-                            text = "현재 로컬 네트워크 전체로 곡 정보를 브로드캐스팅 중입니다.",
+                            text = "?�재 로컬 ?�트?�크 ?�체�?�??�보�?브로?�캐?�팅 중입?�다.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         
                         Spacer(modifier = Modifier.height(32.dp))
                         
-                        // 현재 재생 중인 미디어 정보 카드
+                        // ?�재 ?�생 중인 미디???�보 카드
                         val title by MediaState.title.collectAsState()
                         val artist by MediaState.artist.collectAsState()
                         
@@ -126,7 +126,7 @@ class MainActivity : ComponentActivity() {
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    text = "현재 재생 중인 곡",
+                                    text = "?�재 ?�생 중인 �?,
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -148,9 +148,9 @@ class MainActivity : ComponentActivity() {
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        // 테마 설정 카드
+                        // ?�마 ?�정 카드
                         val selectedTheme by MediaState.themeMode.collectAsState()
-                        val themeOptions = listOf("auto" to "자동 (오픈파일럿 연동)", "dark" to "항상 다크 모드", "light" to "항상 라이트 모드")
+                        val themeOptions = listOf("auto" to "?�동 (?�픈?�일???�동)", "dark" to "??�� ?�크 모드", "light" to "??�� ?�이??모드")
                         
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -160,7 +160,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.padding(16.dp).fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "HUD 테마 설정",
+                                    text = "HUD ?�마 ?�정",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -191,7 +191,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
                                 Text(
-                                    text = "SSH 인증 키",
+                                    text = "SSH ?�증 ??,
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -202,11 +202,11 @@ class MainActivity : ComponentActivity() {
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(
-                                        text = if (sshKeyExists) "✅ 키 파일이 등록됨" else "❌ 키 파일 없음",
+                                        text = if (sshKeyExists) "?????�일???�록?? else "?????�일 ?�음",
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                     Button(onClick = { launcher.launch("*/*") }) {
-                                        Text(if (sshKeyExists) "파일 가져오기" else "파일 선택")
+                                        Text(if (sshKeyExists) "?�일 가?�오�? else "?�일 ?�택")
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -218,44 +218,44 @@ class MainActivity : ComponentActivity() {
                                         coroutineScope.launch(Dispatchers.IO) {
                                             try {
                                                 val jsch = JSch()
-                                                val kpair = KeyPair.genKeyPair(jsch, KeyPair.ED25519)
-                                                val privFile = File(context.filesDir, "id_ed25519")
-                                                val pubFile = File(context.filesDir, "id_ed25519.pub")
+                                                val kpair = KeyPair.genKeyPair(jsch, KeyPair.RSA, 2048)
+                                                val privFile = File(context.filesDir, "id_rsa")
+                                                val pubFile = File(context.filesDir, "id_rsa.pub")
                                                 kpair.writePrivateKey(privFile.absolutePath)
                                                 kpair.writePublicKey(pubFile.absolutePath, "carrothud@android")
                                                 kpair.dispose()
                                                 withContext(Dispatchers.Main) {
                                                     sshKeyExists = true
-                                                    Toast.makeText(context, "새로운 SSH 키가 생성되었습니다.", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, "?�로??SSH ?��? ?�성?�었?�니??", Toast.LENGTH_SHORT).show()
                                                 }
                                             } catch (e: Exception) {
                                                 e.printStackTrace()
                                                 withContext(Dispatchers.Main) {
-                                                    Toast.makeText(context, "키 생성 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, "???�성 ?�패: ${e.message}", Toast.LENGTH_SHORT).show()
                                                 }
                                             }
                                         }
                                     }) {
-                                        Text("키 자동 생성")
+                                        Text("???�동 ?�성")
                                     }
                                     
                                     if (sshKeyExists) {
                                         Button(onClick = {
-                                            val pubFile = File(context.filesDir, "id_ed25519.pub")
+                                            val pubFile = File(context.filesDir, "id_rsa.pub")
                                             if (pubFile.exists()) {
                                                 val pubKey = pubFile.readText()
                                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                                 val clip = ClipData.newPlainText("SSH Public Key", pubKey)
                                                 clipboard.setPrimaryClip(clip)
-                                                Toast.makeText(context, "공개키 복사 완료! 깃허브 설정 페이지가 열립니다.", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(context, "공개??복사 ?�료! 깃허�??�정 ?�이지가 ?�립?�다.", Toast.LENGTH_LONG).show()
                                                 
                                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/settings/ssh/new"))
                                                 context.startActivity(intent)
                                             } else {
-                                                Toast.makeText(context, "자동 생성된 공개키가 없습니다. 기존 파일을 사용 중입니다.", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(context, "?�동 ?�성??공개?��? ?�습?�다. 기존 ?�일???�용 중입?�다.", Toast.LENGTH_LONG).show()
                                             }
                                         }) {
-                                            Text("깃허브에 키 등록하기")
+                                            Text("깃허브에 ???�록?�기")
                                         }
                                     }
                                 }
@@ -270,7 +270,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
                                 Text(
-                                    text = "콤마 기기 IP (선택 사항)",
+                                    text = "콤마 기기 IP (?�택 ?�항)",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -281,7 +281,7 @@ class MainActivity : ComponentActivity() {
                                         manualIp = it
                                         sharedPrefs.edit().putString("comma_ip", it).apply()
                                     },
-                                    placeholder = { Text("예: 192.168.1.30 (비워두면 자동 스캔)") },
+                                    placeholder = { Text("?? 192.168.1.30 (비워?�면 ?�동 ?�캔)") },
                                     modifier = Modifier.fillMaxWidth(),
                                     singleLine = true
                                 )
@@ -297,7 +297,7 @@ class MainActivity : ComponentActivity() {
                             },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                         ) {
-                            Text("알림 접근 권한 허용하기")
+                            Text("?�림 ?�근 권한 ?�용?�기")
                         }
                         
                         Spacer(modifier = Modifier.height(16.dp))
@@ -308,25 +308,25 @@ class MainActivity : ComponentActivity() {
                                 if (targetIp.isNotEmpty()) {
                                     foundCommaIp = targetIp
                                     showConfirmDialog = true
-                                    patchStatus = "IP 수동 입력됨."
+                                    patchStatus = "IP ?�동 ?�력??"
                                 } else {
-                                    patchStatus = "콤마 기기 IP 스캔 중..."
+                                    patchStatus = "콤마 기기 IP ?�캔 �?.."
                                     coroutineScope.launch {
                                         val client = CommaSshClient(context)
                                         val ip = client.findCommaDeviceIp()
                                         if (ip != null) {
                                             foundCommaIp = ip
                                             showConfirmDialog = true
-                                            patchStatus = "IP 스캔 완료."
+                                            patchStatus = "IP ?�캔 ?�료."
                                         } else {
-                                            patchStatus = "패치 적용 실패: 네트워크에서 콤마 기기(포트 7000)를 찾을 수 없습니다."
+                                            patchStatus = "?�치 ?�용 ?�패: ?�트?�크?�서 콤마 기기(?�트 7000)�?찾을 ???�습?�다."
                                         }
                                     }
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                         ) {
-                            Text("콤마 기기에 HUD 패치(USB 모니터) 적용하기")
+                            Text("콤마 기기??HUD ?�치(USB 모니?? ?�용?�기")
                         }
                         
                         if (patchStatus.isNotEmpty()) {
@@ -334,7 +334,7 @@ class MainActivity : ComponentActivity() {
                             Text(
                                 text = patchStatus,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (patchStatus.contains("실패")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                color = if (patchStatus.contains("?�패")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 16.dp)
                             )
                         }
@@ -345,26 +345,26 @@ class MainActivity : ComponentActivity() {
             if (showConfirmDialog) {
                 AlertDialog(
                     onDismissRequest = { showConfirmDialog = false },
-                    title = { Text("패치 진행 확인") },
-                    text = { Text("콤마 기기를 찾았습니다 (IP: $foundCommaIp).\n\nHUD 패치(USB 모니터 관련 작업 내역)를 콤마 기기에 덮어쓰시겠습니까?\n이 작업은 콤마 기기의 HUD를 재시작합니다.") },
+                    title = { Text("?�치 진행 ?�인") },
+                    text = { Text("콤마 기기�?찾았?�니??(IP: $foundCommaIp).\n\nHUD ?�치(USB 모니??관???�업 ?�역)�?콤마 기기????��?�시겠습?�까?\n???�업?� 콤마 기기??HUD�??�시?�합?�다.") },
                     confirmButton = {
                         Button(
                             onClick = {
                                 showConfirmDialog = false
                                 showProgressDialog = true
-                                patchLogs = "SSH 접속 및 패치 적용 시작...\n"
-                                patchStatus = "패치 적용 중..."
+                                patchLogs = "SSH ?�속 �??�치 ?�용 ?�작...\n"
+                                patchStatus = "?�치 ?�용 �?.."
                                 coroutineScope.launch {
                                     val client = CommaSshClient(context)
                                     val result = client.applyUsbMonitorPatch(foundCommaIp) { log ->
                                         patchLogs += log
                                     }
                                     if (result.isSuccess) {
-                                        patchLogs += "\n\n패치 적용 완료!"
-                                        patchStatus = "패치 적용 성공!"
+                                        patchLogs += "\n\n?�치 ?�용 ?�료!"
+                                        patchStatus = "?�치 ?�용 ?�공!"
                                     } else {
-                                        patchLogs += "\n\n패치 적용 실패: ${result.exceptionOrNull()?.message}"
-                                        patchStatus = "패치 적용 실패: ${result.exceptionOrNull()?.message}"
+                                        patchLogs += "\n\n?�치 ?�용 ?�패: ${result.exceptionOrNull()?.message}"
+                                        patchStatus = "?�치 ?�용 ?�패: ${result.exceptionOrNull()?.message}"
                                     }
                                 }
                             }
@@ -384,8 +384,8 @@ class MainActivity : ComponentActivity() {
             
             if (showProgressDialog) {
                 AlertDialog(
-                    onDismissRequest = { /* 진행 중에는 바깥 터치로 닫히지 않게 함 */ },
-                    title = { Text("패치 진행 현황") },
+                    onDismissRequest = { /* 진행 중에??바깥 ?�치�??�히지 ?�게 ??*/ },
+                    title = { Text("?�치 진행 ?�황") },
                     text = {
                         val scrollState = rememberScrollState()
                         LaunchedEffect(patchLogs) {
@@ -401,11 +401,11 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     confirmButton = {
-                        if (patchLogs.contains("패치 적용 완료!") || patchLogs.contains("패치 적용 실패:")) {
+                        if (patchLogs.contains("?�치 ?�용 ?�료!") || patchLogs.contains("?�치 ?�용 ?�패:")) {
                             Button(
                                 onClick = { showProgressDialog = false }
                             ) {
-                                Text("닫기")
+                                Text("?�기")
                             }
                         }
                     }

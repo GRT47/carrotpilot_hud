@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 object MediaState {
-    private val _title = MutableStateFlow("재생 중인 곡이 없습니다")
+    private val _title = MutableStateFlow("?�생 중인 곡이 ?�습?�다")
     val title: StateFlow<String> = _title
     
     private val _artist = MutableStateFlow("")
