@@ -92,7 +92,7 @@ class CommaSshClient(private val context: Context, private val sshUser: String =
             
             val keyFile = File(context.filesDir, "id_rsa")
             if (!keyFile.exists()) {
-                return@withContext Result.failure(Exception("SSH ???�일???�록?��? ?�았?�니?? ??메인 ?�면?�서 ???�일??먼�? ?�택?�주?�요."))
+                return@withContext Result.failure(Exception("SSH 키 파일이 등록되지 않았습니다. 앱 메인 화면에서 키 파일을 먼저 선택해주세요."))
             }
 
             jsch.addIdentity(keyFile.absolutePath)
