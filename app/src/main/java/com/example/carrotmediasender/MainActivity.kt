@@ -15,6 +15,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.service.notification.NotificationListenerService
 import androidx.compose.foundation.clickable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import java.io.File
+import java.io.FileOutputStream
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -50,6 +54,25 @@ class MainActivity : ComponentActivity() {
             var patchStatus by remember { mutableStateOf("") }
             var showConfirmDialog by remember { mutableStateOf(false) }
             var foundCommaIp by remember { mutableStateOf("") }
+            var sshKeyExists by remember { mutableStateOf(File(context.filesDir, "id_ed25519").exists()) }
+
+            val launcher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.GetContent()
+            ) { uri ->
+                uri?.let {
+                    try {
+                        context.contentResolver.openInputStream(it)?.use { input ->
+                            val outFile = File(context.filesDir, "id_ed25519")
+                            FileOutputStream(outFile).use { output ->
+                                input.copyTo(output)
+                            }
+                            sshKeyExists = true
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
             
             MaterialTheme {
                 Surface(
@@ -64,7 +87,7 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "Carrot Media Sender",
+                            text = "HUD config",
                             style = MaterialTheme.typography.headlineMedium
                         )
                         Spacer(modifier = Modifier.height(32.dp))
@@ -147,6 +170,35 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+                                Text(
+                                    text = "SSH 인증 키",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = if (sshKeyExists) "✅ 키 파일이 등록됨" else "❌ 키 파일 없음",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Button(onClick = { launcher.launch("*/*") }) {
+                                        Text(if (sshKeyExists) "변경하기" else "파일 선택")
+                                    }
+                                }
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(32.dp))
                         
                         Button(

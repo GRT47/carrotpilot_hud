@@ -92,20 +92,10 @@ class CommaSshClient(private val context: Context) {
             
             val jsch = JSch()
             
-            // Extract private key from resources to a temporary file
-            val keyFile = File(context.cacheDir, "id_ed25519")
+            val keyFile = File(context.filesDir, "id_ed25519")
             if (!keyFile.exists()) {
-                context.resources.openRawResource(R.raw.id_ed25519).use { input ->
-                    FileOutputStream(keyFile).use { output ->
-                        input.copyTo(output)
-                    }
-                }
+                return@withContext Result.failure(Exception("SSH 키 파일이 등록되지 않았습니다. 앱 메인 화면에서 키 파일을 먼저 선택해주세요."))
             }
-            
-            // Set permissions if possible (though on Android app storage it's private anyway)
-            keyFile.setReadable(true, true)
-            keyFile.setWritable(true, true)
-            keyFile.setExecutable(false, false)
 
             jsch.addIdentity(keyFile.absolutePath)
 
