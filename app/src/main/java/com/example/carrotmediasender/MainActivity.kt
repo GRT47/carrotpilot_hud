@@ -23,6 +23,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import java.io.File
 import java.io.FileOutputStream
 import kotlinx.coroutines.launch
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.KeyPair
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +72,7 @@ class MainActivity : ComponentActivity() {
             var foundCommaIp by remember { mutableStateOf("") }
             var sshKeyExists by remember { mutableStateOf(File(context.filesDir, "id_rsa").exists()) }
             var manualIp by remember { mutableStateOf(sharedPrefs.getString("comma_ip", "") ?: "") }
+            var isThemeSettingsExpanded by remember { mutableStateOf(false) }
 
             val launcher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.GetContent()
@@ -157,27 +162,45 @@ class MainActivity : ComponentActivity() {
                             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                         ) {
                             Column(
-                                modifier = Modifier.padding(16.dp).fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(
-                                    text = "HUD 테마 설정",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                themeOptions.forEach { (value, label) ->
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.fillMaxWidth()
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { isThemeSettingsExpanded = !isThemeSettingsExpanded }
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "HUD 테마 설정",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Icon(
+                                        imageVector = if (isThemeSettingsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "토글 테마 설정"
+                                    )
+                                }
+                                AnimatedVisibility(visible = isThemeSettingsExpanded) {
+                                    Column(
+                                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp).fillMaxWidth()
                                     ) {
-                                        RadioButton(
-                                            selected = selectedTheme == value,
-                                            onClick = {
-                                                sharedPrefs.edit().putString("theme", value).apply()
-                                                MediaState.setThemeMode(value)
+                                        themeOptions.forEach { (value, label) ->
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                RadioButton(
+                                                    selected = selectedTheme == value,
+                                                    onClick = {
+                                                        sharedPrefs.edit().putString("theme", value).apply()
+                                                        MediaState.setThemeMode(value)
+                                                    }
+                                                )
+                                                Text(text = label)
                                             }
-                                        )
-                                        Text(text = label)
+                                        }
                                     }
                                 }
                             }
