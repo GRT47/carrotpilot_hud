@@ -24,9 +24,6 @@ import java.io.File
 import java.io.FileOutputStream
 import kotlinx.coroutines.launch
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.KeyPair
 import kotlinx.coroutines.Dispatchers
@@ -177,9 +174,10 @@ class MainActivity : ComponentActivity() {
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    Icon(
-                                        imageVector = if (isThemeSettingsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                        contentDescription = "토글 테마 설정"
+                                    Text(
+                                        text = if (isThemeSettingsExpanded) "▲" else "▼",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 AnimatedVisibility(visible = isThemeSettingsExpanded) {
