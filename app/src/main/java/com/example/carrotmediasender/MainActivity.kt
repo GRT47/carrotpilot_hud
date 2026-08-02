@@ -15,6 +15,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.service.notification.NotificationListenerService
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import java.io.File
@@ -53,6 +55,8 @@ class MainActivity : ComponentActivity() {
             val coroutineScope = rememberCoroutineScope()
             var patchStatus by remember { mutableStateOf("") }
             var showConfirmDialog by remember { mutableStateOf(false) }
+            var showProgressDialog by remember { mutableStateOf(false) }
+            var patchLogs by remember { mutableStateOf("") }
             var foundCommaIp by remember { mutableStateOf("") }
             var sshKeyExists by remember { mutableStateOf(File(context.filesDir, "id_ed25519").exists()) }
             var manualIp by remember { mutableStateOf(sharedPrefs.getString("comma_ip", "") ?: "") }
@@ -289,14 +293,20 @@ class MainActivity : ComponentActivity() {
                         Button(
                             onClick = {
                                 showConfirmDialog = false
+                                showProgressDialog = true
+                                patchLogs = "SSH 접속 및 패치 적용 시작...\n"
                                 patchStatus = "패치 적용 중..."
                                 coroutineScope.launch {
                                     val client = CommaSshClient(context)
-                                    val result = client.applyUsbMonitorPatch(foundCommaIp)
-                                    patchStatus = if (result.isSuccess) {
-                                        "패치 적용 성공!"
+                                    val result = client.applyUsbMonitorPatch(foundCommaIp) { log ->
+                                        patchLogs += log
+                                    }
+                                    if (result.isSuccess) {
+                                        patchLogs += "\n\n패치 적용 완료!"
+                                        patchStatus = "패치 적용 성공!"
                                     } else {
-                                        "패치 적용 실패: ${result.exceptionOrNull()?.message}"
+                                        patchLogs += "\n\n패치 적용 실패: ${result.exceptionOrNull()?.message}"
+                                        patchStatus = "패치 적용 실패: ${result.exceptionOrNull()?.message}"
                                     }
                                 }
                             }
@@ -309,6 +319,36 @@ class MainActivity : ComponentActivity() {
                             onClick = { showConfirmDialog = false }
                         ) {
                             Text("취소")
+                        }
+                    }
+                )
+            }
+            
+            if (showProgressDialog) {
+                AlertDialog(
+                    onDismissRequest = { /* 진행 중에는 바깥 터치로 닫히지 않게 함 */ },
+                    title = { Text("패치 진행 현황") },
+                    text = {
+                        val scrollState = rememberScrollState()
+                        LaunchedEffect(patchLogs) {
+                            scrollState.animateScrollTo(scrollState.maxValue)
+                        }
+                        Text(
+                            text = patchLogs,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(300.dp)
+                                .verticalScroll(scrollState),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    confirmButton = {
+                        if (patchLogs.contains("패치 적용 완료!") || patchLogs.contains("패치 적용 실패:")) {
+                            Button(
+                                onClick = { showProgressDialog = false }
+                            ) {
+                                Text("닫기")
+                            }
                         }
                     }
                 )

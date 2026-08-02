@@ -83,7 +83,7 @@ class CommaSshClient(private val context: Context, private val sshUser: String =
         return@withContext foundIp
     }
 
-    suspend fun applyUsbMonitorPatch(targetHost: String): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun applyUsbMonitorPatch(targetHost: String, onProgress: suspend (String) -> Unit = {}): Result<String> = withContext(Dispatchers.IO) {
         var session: Session? = null
         try {
             Log.d(TAG, "Connecting to Comma device at $targetHost")
@@ -135,12 +135,16 @@ class CommaSshClient(private val context: Context, private val sshUser: String =
                 while (inStream.available() > 0) {
                     val i = inStream.read(buffer, 0, 1024)
                     if (i < 0) break
-                    output.append(String(buffer, 0, i))
+                    val str = String(buffer, 0, i)
+                    output.append(str)
+                    onProgress(str)
                 }
                 while (errStream.available() > 0) {
                     val i = errStream.read(buffer, 0, 1024)
                     if (i < 0) break
-                    output.append(String(buffer, 0, i))
+                    val str = String(buffer, 0, i)
+                    output.append(str)
+                    onProgress(str)
                 }
                 if (channel.isClosed) {
                     if (inStream.available() > 0 || errStream.available() > 0) continue
