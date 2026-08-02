@@ -21,7 +21,7 @@ class CommaSshClient(private val context: Context) {
     companion object {
         private const val TAG = "CommaSshClient"
         private const val USER = "comma"
-        private const val PORT = 22
+        private const val PORT = 8022
     }
 
     suspend fun findCommaDeviceIp(): String? = withContext(Dispatchers.IO) {
