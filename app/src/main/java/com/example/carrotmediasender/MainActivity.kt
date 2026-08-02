@@ -1,6 +1,7 @@
 package com.example.carrotmediasender
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -246,12 +247,15 @@ class MainActivity : ComponentActivity() {
                                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                                 val clip = ClipData.newPlainText("SSH Public Key", pubKey)
                                                 clipboard.setPrimaryClip(clip)
-                                                Toast.makeText(context, "공개키가 복사되었습니다. 기기의 authorized_keys에 추가해주세요.", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(context, "공개키 복사 완료! 깃허브 설정 페이지가 열립니다.", Toast.LENGTH_LONG).show()
+                                                
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/settings/ssh/new"))
+                                                context.startActivity(intent)
                                             } else {
                                                 Toast.makeText(context, "자동 생성된 공개키가 없습니다. 기존 파일을 사용 중입니다.", Toast.LENGTH_LONG).show()
                                             }
                                         }) {
-                                            Text("공개키 복사")
+                                            Text("깃허브에 키 등록하기")
                                         }
                                     }
                                 }
