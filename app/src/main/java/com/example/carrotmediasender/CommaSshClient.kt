@@ -4,8 +4,10 @@ import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import net.schmizz.sshj.SSHClient
-import net.schmizz.sshj.transport.verification.PromiscuousVerifier
+import com.jcraft.jsch.JSch
+import com.jcraft.jsch.Session
+import com.jcraft.jsch.ChannelExec
+import com.jcraft.jsch.Logger
 import java.io.File
 import java.net.NetworkInterface
 import java.net.Inet4Address
@@ -99,7 +101,8 @@ class CommaSshClient(private val context: Context, private val sshUser: String =
             fi
         """.trimIndent()
         
-        var ssh: SSHClient? = null
+        var session: Session? = null
+        var channel: ChannelExec? = null
 
         try {
             if (!keyFile.exists()) {
@@ -107,20 +110,39 @@ class CommaSshClient(private val context: Context, private val sshUser: String =
                 return@withContext Result.failure(Exception("SSH 키 파일을 찾을 수 없습니다."))
             }
 
-            ssh = SSHClient()
-            ssh.addHostKeyVerifier(PromiscuousVerifier())
+            val jsch = JSch()
+            JSch.setLogger(object : Logger {
+                override fun isEnabled(level: Int): Boolean = true
+                override fun log(level: Int, message: String) {
+                    Log.d("JSchLog", message)
+                }
+            })
+            jsch.addIdentity(keyFile.absolutePath)
             
             Log.d(TAG, "Attempting to connect with sshUser: ${sshUser} on port: ${sshPort} using key: ${keyFile.absolutePath}")
-            ssh.connect(targetHost, sshPort)
-            ssh.authPublickey(sshUser, keyFile.absolutePath)
+            session = jsch.getSession(sshUser, targetHost, sshPort)
             
-            val session = ssh.startSession()
-            val cmd = session.exec(command)
+            val config = java.util.Properties()
+            config.put("StrictHostKeyChecking", "no")
+            // Ensure rsa-sha2 is preferred
+            config.put("PubkeyAcceptedAlgorithms", "+ssh-rsa,rsa-sha2-256,rsa-sha2-512")
+            session.setConfig(config)
             
-            val output = cmd.inputStream.bufferedReader().readText()
-            val exitStatus = cmd.exitStatus
+            session.connect(10000)
             
-            session.close()
+            channel = session.openChannel("exec") as ChannelExec
+            channel.setCommand(command)
+            
+            val inputStream = channel.inputStream
+            channel.connect()
+            
+            val output = inputStream.bufferedReader().readText()
+            
+            while (!channel.isClosed) {
+                kotlinx.coroutines.delay(100)
+            }
+            
+            val exitStatus = channel.exitStatus
             
             Log.d(TAG, "Command execution finished with exit status: $exitStatus")
             Log.d(TAG, "Output: $output")
@@ -136,7 +158,8 @@ class CommaSshClient(private val context: Context, private val sshUser: String =
             return@withContext Result.failure(Exception("기기 연결 실패: ${e.message}"))
         } finally {
             try {
-                ssh?.disconnect()
+                channel?.disconnect()
+                session?.disconnect()
             } catch (e: Exception) {
                 Log.e(TAG, "Error closing SSH session", e)
             }
