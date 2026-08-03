@@ -84,4 +84,5 @@ dependencies {
 
   // SSH
   implementation("com.github.mwiede:jsch:0.2.17")
+  implementation("org.bouncycastle:bcprov-jdk15to18:1.77")
 }

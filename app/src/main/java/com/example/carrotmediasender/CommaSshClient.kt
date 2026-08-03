@@ -20,6 +20,21 @@ import kotlinx.coroutines.cancel
 class CommaSshClient(private val context: Context, private val sshUser: String = "comma", private val sshPort: Int = 22) {
     companion object {
         private const val TAG = "CommaSshClient"
+        
+        init {
+            JSch.setLogger(object : com.jcraft.jsch.Logger {
+                override fun isEnabled(level: Int): Boolean = true
+                override fun log(level: Int, message: String) {
+                    when (level) {
+                        com.jcraft.jsch.Logger.DEBUG -> Log.d("JSch", message)
+                        com.jcraft.jsch.Logger.INFO -> Log.i("JSch", message)
+                        com.jcraft.jsch.Logger.WARN -> Log.w("JSch", message)
+                        com.jcraft.jsch.Logger.ERROR, com.jcraft.jsch.Logger.FATAL -> Log.e("JSch", message)
+                        else -> Log.v("JSch", message)
+                    }
+                }
+            })
+        }
     }
 
     suspend fun findCommaDeviceIp(): String? = withContext(Dispatchers.IO) {
@@ -97,6 +112,7 @@ class CommaSshClient(private val context: Context, private val sshUser: String =
 
             jsch.addIdentity(keyFile.absolutePath)
 
+            Log.d(TAG, "Attempting to connect with sshUser: $sshUser on port: $sshPort using key: ${keyFile.absolutePath}")
             session = jsch.getSession(sshUser, targetHost, sshPort)
             session.setConfig("StrictHostKeyChecking", "no")
             session.connect(10000)

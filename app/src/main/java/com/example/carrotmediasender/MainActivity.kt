@@ -5,6 +5,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.provider.Settings
+import java.security.Security
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -76,6 +78,10 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Remove Android's crippled BC and insert the full one
+        Security.removeProvider("BC")
+        Security.insertProviderAt(BouncyCastleProvider(), 1)
         
         val sharedPrefs = getSharedPreferences("carrot_prefs", Context.MODE_PRIVATE)
         val initialTheme = sharedPrefs.getString("theme", "auto") ?: "auto"
