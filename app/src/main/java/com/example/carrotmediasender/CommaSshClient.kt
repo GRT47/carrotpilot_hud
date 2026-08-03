@@ -2,13 +2,11 @@ package com.example.carrotmediasender
 
 import android.content.Context
 import android.util.Log
-import com.jcraft.jsch.JSch
-import com.jcraft.jsch.Session
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.InputStream
+import net.schmizz.sshj.SSHClient
+import net.schmizz.sshj.transport.verification.PromiscuousVerifier
 import java.io.File
-import java.io.FileOutputStream
 import java.net.NetworkInterface
 import java.net.Inet4Address
 import java.net.InetSocketAddress
@@ -20,21 +18,6 @@ import kotlinx.coroutines.cancel
 class CommaSshClient(private val context: Context, private val sshUser: String = "comma", private val sshPort: Int = 22) {
     companion object {
         private const val TAG = "CommaSshClient"
-        
-        init {
-            JSch.setLogger(object : com.jcraft.jsch.Logger {
-                override fun isEnabled(level: Int): Boolean = true
-                override fun log(level: Int, message: String) {
-                    when (level) {
-                        com.jcraft.jsch.Logger.DEBUG -> Log.d("JSch", message)
-                        com.jcraft.jsch.Logger.INFO -> Log.i("JSch", message)
-                        com.jcraft.jsch.Logger.WARN -> Log.w("JSch", message)
-                        com.jcraft.jsch.Logger.ERROR, com.jcraft.jsch.Logger.FATAL -> Log.e("JSch", message)
-                        else -> Log.v("JSch", message)
-                    }
-                }
-            })
-        }
     }
 
     suspend fun findCommaDeviceIp(): String? = withContext(Dispatchers.IO) {
@@ -99,90 +82,64 @@ class CommaSshClient(private val context: Context, private val sshUser: String =
     }
 
     suspend fun applyUsbMonitorPatch(targetHost: String, onProgress: suspend (String) -> Unit = {}): Result<String> = withContext(Dispatchers.IO) {
-        var session: Session? = null
-        try {
-            Log.d(TAG, "Connecting to Comma device at $targetHost")
-            
-            val jsch = JSch()
-            
-            val keyFile = File(context.filesDir, "id_rsa")
-            if (!keyFile.exists()) {
-                return@withContext Result.failure(Exception("SSH 키 파일이 등록되지 않았습니다. 앱 메인 화면에서 키 파일을 먼저 선택해주세요."))
-            }
-
-            jsch.addIdentity(keyFile.absolutePath)
-
-            Log.d(TAG, "Attempting to connect with sshUser: $sshUser on port: $sshPort using key: ${keyFile.absolutePath}")
-            session = jsch.getSession(sshUser, targetHost, sshPort)
-            session.setConfig("StrictHostKeyChecking", "no")
-            session.connect(10000)
-
-            val command = """
-                cd /data/openpilot/selfdrive/carrot
+        val keyFile = File(context.filesDir, "id_rsa")
+        val command = """
+            cd /data/openpilot/selfdrive/carrot
+            rm -rf cluster_tmp
+            git clone -b cluster --depth 1 https://github.com/GRT47/carrotpilot_hud.git cluster_tmp
+            if [ -d "cluster_tmp/cluster" ]; then
+                rm -rf cluster
+                mv cluster_tmp/cluster ./cluster
                 rm -rf cluster_tmp
-                git clone -b cluster --depth 1 https://github.com/GRT47/carrotpilot_hud.git cluster_tmp
-                if [ -d "cluster_tmp/cluster" ]; then
-                    rm -rf cluster
-                    mv cluster_tmp/cluster ./cluster
-                    rm -rf cluster_tmp
-                    # Assuming HUD is managed by openpilot or systemd, we can restart it.
-                    # Or we just kill main.py so it restarts automatically.
-                    pkill -f "python.*cluster/main.py" || true
-                    echo "Patch applied successfully!"
-                else
-                    echo "Error: clone failed or directory not found"
-                    exit 1
-                fi
-            """.trimIndent()
+                pkill -f "python.*cluster/main.py" || true
+                echo "Patch applied successfully!"
+            else
+                echo "Error: clone failed or directory not found"
+                exit 1
+            fi
+        """.trimIndent()
+        
+        var ssh: SSHClient? = null
 
-            val channel = session.openChannel("exec") as com.jcraft.jsch.ChannelExec
-            channel.setCommand(command)
-            channel.inputStream = null
-            
-            val inStream: InputStream = channel.inputStream
-            val errStream: InputStream = channel.errStream
-            
-            channel.connect()
-
-            val output = StringBuilder()
-            val buffer = ByteArray(1024)
-            
-            while (true) {
-                while (inStream.available() > 0) {
-                    val i = inStream.read(buffer, 0, 1024)
-                    if (i < 0) break
-                    val str = String(buffer, 0, i)
-                    output.append(str)
-                    onProgress(str)
-                }
-                while (errStream.available() > 0) {
-                    val i = errStream.read(buffer, 0, 1024)
-                    if (i < 0) break
-                    val str = String(buffer, 0, i)
-                    output.append(str)
-                    onProgress(str)
-                }
-                if (channel.isClosed) {
-                    if (inStream.available() > 0 || errStream.available() > 0) continue
-                    break
-                }
-                Thread.sleep(100)
+        try {
+            if (!keyFile.exists()) {
+                Log.e(TAG, "Key file not found at ${keyFile.absolutePath}")
+                return@withContext Result.failure(Exception("SSH 키 파일을 찾을 수 없습니다."))
             }
 
-            channel.disconnect()
+            ssh = SSHClient()
+            ssh.addHostKeyVerifier(PromiscuousVerifier())
             
-            val exitStatus = channel.exitStatus
+            Log.d(TAG, "Attempting to connect with sshUser: ${sshUser} on port: ${sshPort} using key: ${keyFile.absolutePath}")
+            ssh.connect(targetHost, sshPort)
+            ssh.authPublickey(sshUser, keyFile.absolutePath)
+            
+            val session = ssh.startSession()
+            val cmd = session.exec(command)
+            
+            val output = cmd.inputStream.bufferedReader().readText()
+            val exitStatus = cmd.exitStatus
+            
+            session.close()
+            
+            Log.d(TAG, "Command execution finished with exit status: $exitStatus")
+            Log.d(TAG, "Output: $output")
+            
             if (exitStatus == 0) {
-                Result.success(output.toString())
+                return@withContext Result.success("패치가 성공적으로 적용되었습니다.")
             } else {
-                Result.failure(Exception("Command failed with status $exitStatus\nOutput: $output"))
+                return@withContext Result.failure(Exception("패치 적용 실패 (코드: $exitStatus)\n출력: $output"))
             }
 
         } catch (e: Exception) {
             Log.e(TAG, "SSH connection failed", e)
-            Result.failure(e)
+            return@withContext Result.failure(Exception("기기 연결 실패: ${e.message}"))
         } finally {
-            session?.disconnect()
+            try {
+                ssh?.disconnect()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error closing SSH session", e)
+            }
         }
     }
 }

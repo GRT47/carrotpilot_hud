@@ -83,6 +83,6 @@ dependencies {
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
   // SSH
+  implementation("com.hierynomus:sshj:0.38.0")
   implementation("com.github.mwiede:jsch:0.2.17")
-  implementation("org.bouncycastle:bcprov-jdk15to18:1.77")
 }
