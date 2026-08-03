@@ -17,7 +17,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
 
-class CommaSshClient(private val context: Context, private val sshUser: String = "root", private val sshPort: Int = 22) {
+class CommaSshClient(private val context: Context, private val sshUser: String = "comma", private val sshPort: Int = 22) {
     companion object {
         private const val TAG = "CommaSshClient"
     }
